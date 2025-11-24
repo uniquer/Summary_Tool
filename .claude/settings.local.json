@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(pip install:*)",
+      "Bash(streamlit run:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3 -m streamlit:*)",
+      "Bash(python3 -m py_compile:*)",
+      "Bash(python3:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
