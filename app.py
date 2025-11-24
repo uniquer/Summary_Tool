@@ -336,12 +336,11 @@ def main():
         # Instructions
         with st.expander("📖 How to Use"):
             st.markdown("""
-            1. **Configure**: Enter API keys and Supabase credentials
-            2. **Add URLs**: Paste PDF URLs (one per line)
-            3. **Set Prompts**: Define long and short summary prompts
-            4. **Start**: Click 'Start Summarization'
-            5. **Monitor**: Watch real-time progress
-            6. **Download**: Export results to Excel
+            1. **Add URLs**: Paste PDF URLs (one per line)
+            2. **Start**: Click 'Download PDFs'
+            3. **Monitor**: Watch real-time progress
+            4. **Summarize**: Go to 'Existing Files' tab to generate summaries
+            5. **Download**: Export results to Excel
             """)
 
     # Tab 1: New Summaries
