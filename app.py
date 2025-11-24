@@ -6,16 +6,14 @@ from datetime import datetime
 import os
 from typing import Dict, List
 import time
-from dotenv import load_dotenv
+# Load environment variables
+# load_dotenv() - Removed, using st.secrets instead
 
 from pdf_processor import PDFProcessor
 from summarizer import Summarizer
 from database import SummaryDatabase
 from report_generator import ReportGenerator
 # Force reload
-
-# Load environment variables
-load_dotenv()
 
 
 # Page configuration
@@ -313,63 +311,27 @@ def main():
 
     # Sidebar - Configuration
     with st.sidebar:
-        st.header("⚙️ Configuration")
+        # Load from secrets.toml
+        env_ai_provider = st.secrets.get("AI_PROVIDER", "")
+        env_claude_key = st.secrets.get("CLAUDE_API_KEY", "")
+        env_openai_key = st.secrets.get("OPENAI_API_KEY", "")
+        env_openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
+        env_supabase_url = st.secrets.get("SUPABASE_URL", "")
+        env_supabase_key = st.secrets.get("SUPABASE_KEY", "")
 
-        # Load from .env
-        env_ai_provider = os.getenv("AI_PROVIDER", "claude").capitalize()
-        env_claude_key = os.getenv("CLAUDE_API_KEY", "")
-        env_openai_key = os.getenv("OPENAI_API_KEY", "")
-        env_openrouter_key = os.getenv("OPENROUTER_API_KEY", "")
-        env_supabase_url = os.getenv("SUPABASE_URL", "")
-        env_supabase_key = os.getenv("SUPABASE_KEY", "")
-
-        # AI Provider selection
-        default_index = 0 # Default to OpenRouter
-        if env_ai_provider == "Claude":
-            default_index = 1
-        elif env_ai_provider == "Openai":
-            default_index = 2
-            
-        ai_provider = st.selectbox(
-            "AI Provider",
-            options=["OpenRouter", "Claude", "OpenAI"],
-            index=default_index,
-            help="Choose the AI service for summarization"
-        )
-
-        # API Key input - pre-fill from .env
-        default_api_key = ""
-        if ai_provider == "Claude":
-            default_api_key = env_claude_key
-        elif ai_provider == "OpenAI":
-            default_api_key = env_openai_key
-        elif ai_provider == "OpenRouter":
-            default_api_key = env_openrouter_key
-        api_key = st.text_input(
-            f"{ai_provider} API Key",
-            value=default_api_key,
-            type="password",
-            help=f"Enter your {ai_provider} API key (loaded from .env if available)"
-        )
-
-        st.divider()
-
-        # Supabase configuration
-        st.subheader("Database Configuration")
-        supabase_url = st.text_input(
-            "Supabase URL",
-            value=env_supabase_url,
-            help="Your Supabase project URL (loaded from .env if available)"
-        )
-
-        supabase_key = st.text_input(
-            "Supabase API Key",
-            value=env_supabase_key,
-            type="password",
-            help="Your Supabase API key (loaded from .env if available)"
-        )
-
-        st.divider()
+        # Set variables directly from secrets
+        ai_provider = env_ai_provider
+        supabase_url = env_supabase_url
+        supabase_key = env_supabase_key
+        
+        # Determine API key based on provider
+        api_key = ""
+        if ai_provider.lower() == "claude":
+            api_key = env_claude_key
+        elif ai_provider.lower() == "openai":
+            api_key = env_openai_key
+        elif ai_provider.lower() == "openrouter":
+            api_key = env_openrouter_key
 
         # Instructions
         with st.expander("📖 How to Use"):
@@ -563,27 +525,17 @@ def main():
                     st.divider()
                     st.subheader("💬 Summary Prompts")
 
-                    # Load prompts from .env
-                    env_long_prompt = os.getenv("LONG_SUMMARY_PROMPT", "")
-                    env_short_prompt = os.getenv("SHORT_SUMMARY_PROMPT", "")
-
-                    long_prompt = st.text_area(
-                        "Long Summary Prompt",
-                        value=env_long_prompt,
-                        height=150,
-                        placeholder="Please provide a detailed summary covering all key points...",
-                        help="Prompt for generating detailed summaries",
-                        key="tab2_long_prompt"
-                    )
-
-                    short_prompt = st.text_area(
-                        "Short Summary Prompt",
-                        value=env_short_prompt,
-                        height=100,
-                        placeholder="Please provide a concise summary highlighting only the most important points...",
-                        help="Prompt for generating brief summaries",
-                        key="tab2_short_prompt"
-                    )
+                    # Load prompts from secrets.toml
+                    long_prompt = st.secrets.get("LONG_SUMMARY_PROMPT", "")
+                    short_prompt = st.secrets.get("SHORT_SUMMARY_PROMPT", "")
+                    
+                    # Display prompts in expander instead of inputs
+                    with st.expander("📝 View Summary Prompts"):
+                        st.markdown("**Long Summary Prompt:**")
+                        st.caption(long_prompt)
+                        st.divider()
+                        st.markdown("**Short Summary Prompt:**")
+                        st.caption(short_prompt)
 
                     st.divider()
 
@@ -949,7 +901,13 @@ def main():
             else:
                 st.error(f"❌ Initialization error: {init_error}")
         else:
-            st.warning("⚠️ Please configure API keys and Supabase credentials in the sidebar to view existing files")
+            st.warning("⚠️ Please configure API keys and Supabase credentials in .streamlit/secrets.toml to view existing files.")
+            if not api_key:
+                st.error(f"❌ Missing {ai_provider} API Key")
+            if not supabase_url:
+                st.error("❌ Missing Supabase URL")
+            if not supabase_key:
+                st.error("❌ Missing Supabase Key")
 
 
 def display_status_table(results: List[Dict], pdf_processor, summarizer, database, long_prompt: str, short_prompt: str, key_prefix: str = "", show_summary_status: bool = True):

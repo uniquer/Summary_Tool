@@ -1,2 +1,9 @@
 [server]
 runOnSave = true
+
+[client]
+toolbarMode = "minimal"
+
+[ui]
+hideTopBar = false
+hideSidebarNav = true
