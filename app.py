@@ -440,6 +440,18 @@ def main():
                         download_status.info(f"📥 Downloading {idx + 1}/{len(urls)}: {url[:60]}...")
                         result = download_pdf_file(url, pdf_processor, skip_existing=True)
                         st.session_state.file_results.append(result)
+                        
+                        # Save URL to database for later retrieval
+                        if result['download_status'] in ['success', 'skipped'] and result.get('filename'):
+                            database.insert_summary({
+                                'url': url,
+                                'filename': result['filename'],
+                                'long_summary': '',
+                                'short_summary': '',
+                                'status': 'pending',
+                                'error_message': '',
+                                'created_at': datetime.utcnow().isoformat()
+                            })
 
                         # Update progress
                         download_progress.progress((idx + 1) / len(urls))
@@ -585,12 +597,32 @@ def main():
                                 for i, filename in enumerate(files_to_process):
                                     status_text.text(f"Processing {i+1}/{len(files_to_process)}: {filename}...")
                                     
+                                    # Try to get existing URL from database
+                                    existing_url = ''
+                                    existing_summary = database.get_summary_by_filename(filename)
+                                    if existing_summary and existing_summary.get('url'):
+                                        existing_url = existing_summary.get('url')
+                                    
                                     try:
                                         # Extract text
                                         filepath = os.path.join(pdf_processor.download_folder, filename)
                                         success, extracted_text, error = pdf_processor.extract_text_and_tables(filepath)
                                         
-                                        if success:
+                                        if not success:
+                                            fail_count += 1
+                                            error_msg = f"Text extraction failed: {error}"
+                                            # Save failure to database
+                                            result = {
+                                                'url': existing_url,
+                                                'filename': filename,
+                                                'long_summary': f"FAILED: {error_msg}",
+                                                'short_summary': f"FAILED: {error_msg}",
+                                                'status': 'failed',
+                                                'error_message': error_msg,
+                                                'created_at': datetime.utcnow().isoformat()
+                                            }
+                                            database.insert_summary(result)
+                                        else:
                                             # Generate summaries
                                             success, long_summary, short_summary, error = summarizer.create_summaries(
                                                 extracted_text, long_prompt, short_prompt
@@ -599,7 +631,7 @@ def main():
                                             if success:
                                                 # Save to database
                                                 result = {
-                                                    'url': '',
+                                                    'url': existing_url,
                                                     'filename': filename,
                                                     'long_summary': long_summary,
                                                     'short_summary': short_summary,
@@ -611,11 +643,10 @@ def main():
                                                 success_count += 1
                                             else:
                                                 fail_count += 1
-                                                error_msg = f"Failed to summarize {filename}: {error}"
-                                                st.error(error_msg)
+                                                error_msg = f"Summarization failed: {error}"
                                                 # Save failure to database
                                                 result = {
-                                                    'url': '',
+                                                    'url': existing_url,
                                                     'filename': filename,
                                                     'long_summary': f"FAILED: {error_msg}",
                                                     'short_summary': f"FAILED: {error_msg}",
@@ -624,21 +655,6 @@ def main():
                                                     'created_at': datetime.utcnow().isoformat()
                                                 }
                                                 database.insert_summary(result)
-                                        else:
-                                            fail_count += 1
-                                            error_msg = f"Failed to extract text from {filename}: {error}"
-                                            st.error(error_msg)
-                                            # Save failure to database
-                                            result = {
-                                                'url': '',
-                                                'filename': filename,
-                                                'long_summary': f"FAILED: {error_msg}",
-                                                'short_summary': f"FAILED: {error_msg}",
-                                                'status': 'failed',
-                                                'error_message': error_msg,
-                                                'created_at': datetime.utcnow().isoformat()
-                                            }
-                                            database.insert_summary(result)
                                             
                                     except Exception as e:
                                         fail_count += 1
@@ -646,7 +662,7 @@ def main():
                                         st.error(error_msg)
                                         # Save failure to database
                                         result = {
-                                            'url': '',
+                                            'url': existing_url,
                                             'filename': filename,
                                             'long_summary': f"FAILED: {error_msg}",
                                             'short_summary': f"FAILED: {error_msg}",
@@ -840,6 +856,12 @@ def main():
                                 # Summarize button for files without summaries
                                 if st.button(f"🤖 Generate Summary", key=f"summarize_{idx}"):
                                     if long_prompt and short_prompt:
+                                        # Try to get existing URL from database
+                                        existing_url = ''
+                                        existing_summary = database.get_summary_by_filename(filename)
+                                        if existing_summary and existing_summary.get('url'):
+                                            existing_url = existing_summary.get('url')
+                                        
                                         with st.spinner(f"Generating summary for {filename}..."):
                                             filepath = os.path.join(pdf_processor.download_folder, filename)
                                             success, extracted_text, error = pdf_processor.extract_text_and_tables(filepath)
@@ -852,7 +874,7 @@ def main():
                                                 if success:
                                                     # Save to database
                                                     result = {
-                                                        'url': '',
+                                                        'url': existing_url,
                                                         'filename': filename,
                                                         'long_summary': long_summary,
                                                         'short_summary': short_summary,
@@ -867,7 +889,7 @@ def main():
                                                     st.error(f"❌ {error_msg}")
                                                     # Save failure to database
                                                     result = {
-                                                        'url': '',
+                                                        'url': existing_url,
                                                         'filename': filename,
                                                         'long_summary': f"FAILED: {error_msg}",
                                                         'short_summary': f"FAILED: {error_msg}",
@@ -883,7 +905,7 @@ def main():
                                                 st.error(f"❌ {error_msg}")
                                                 # Save failure to database
                                                 result = {
-                                                    'url': '',
+                                                    'url': existing_url,
                                                     'filename': filename,
                                                     'long_summary': f"FAILED: {error_msg}",
                                                     'short_summary': f"FAILED: {error_msg}",
