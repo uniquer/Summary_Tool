@@ -46,7 +46,7 @@ class Summarizer:
                     max_retries=3,
                     timeout=600.0
                 )
-                self.model = "x-ai/grok-4.1-fast"
+                self.model = "x-ai/grok-4.1-fast:free"
             else:
                 raise ValueError(f"Unsupported provider: {provider}")
         except Exception as e:
