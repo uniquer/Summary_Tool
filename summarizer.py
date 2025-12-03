@@ -44,7 +44,7 @@ class Summarizer:
                     base_url="https://openrouter.ai/api/v1",
                     api_key=api_key,
                     max_retries=3,
-                    timeout=600.0
+                    timeout=630.0
                 )
                 self.model = "x-ai/grok-4.1-fast:free"
             else:
